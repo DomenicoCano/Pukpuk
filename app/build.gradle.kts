@@ -75,6 +75,12 @@ dependencies {
 val chimeraSrc = file("${rootDir}/rust")
 val buildChimera = tasks.register<Exec>("buildChimera") {
     workingDir = chimeraSrc
+    // rustc embeds source paths (panic locations, including the cargo registry under the user's home)
+    // in the .so; replace the home directory so a published build never carries the builder's name.
+    val home = System.getProperty("user.home")
+    val slash = 92.toChar() // backslash, written as a code to keep the script free of escapes
+    val remap = listOf(home, home.replace(slash, '/')).distinct().map { "--remap-path-prefix=$it=/home/builder" }
+    environment("CARGO_ENCODED_RUSTFLAGS", remap.joinToString(31.toChar().toString()))
     commandLine(
         "cargo", "ndk", "-t", "arm64-v8a", "-t", "armeabi-v7a", "-t", "x86_64",
         "-o", file("src/main/jniLibs").absolutePath, "build", "--release", "-p", "chimera-android",
